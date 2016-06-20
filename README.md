@@ -23,8 +23,17 @@
 <pre><code>delete from [Table Name] ( where [Attribute] [Condition] [Value] );</pre></code>
 </li>
 
+<li>Drop Table:<br>
+<pre><code>Drop [Table Name];</pre></code>
+</li>
+
+<li>Drop Index:<br>
+<pre><code>Drop [Index Name];</pre></code>
+</li>
+
 </ul>
 
-<p>Condition:{'>' '<' '=' '<>' '>=' '<='}</p>
-<p>Type:{char float int}</p>
+<p>Condition:{ '>' '<' '=' '<>' '>=' '<=' }</p>
+<p>Type:{ char float int }</p>
+<p>Other Integrity:{ unique 'primary key' }</p>
 <p><strong>Do not miss ' ' and sometimes '\n' will make some mistakes.</strong></p>
