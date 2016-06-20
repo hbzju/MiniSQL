@@ -1,33 +1,45 @@
-//
-//  minisql.h
-//  minisql
-//
-//  Created by çŽ‹çš“æ³¢ on 16/5/26.
-//  Copyright Â© 2016å¹´ çŽ‹çš“æ³¢. All rights reserved.
-//
 #ifndef minisql_h
 #define minisql_h
 
 #include "string"
 #include "iostream"
+#include <iomanip>
+#include "block.h"
 using namespace std;
 
 #define INT32 unsigned int
-#define BLOCKSIZE 40
+#define BLOCKSIZE 4096
 #define INDEX_BLOCK_INFO 12
 
-typedef struct {
+
+#define PRIMARY 0
+#define UNIQUE 1
+#define NULLVALUE 2
+
+#define CHAR 0
+#define INT 1
+#define FLOAT 2
+
+class IndexInfo{
+public:
     string indexname;
     int attr_size;
     int maxKeyNum;
-}IndexInfo;
+};
 
-template <class T>
-class Tuple
+class TupleIndex
 {
 public:
-    T key;
+    int type;
+    string key;
     INT32 position;
+};
+
+class TupleIndex_number:public TupleIndex
+{
+public:
+	int intkey;
+	float floatkey;
 };
 
 class Tuple_Addr
@@ -54,4 +66,44 @@ public:
     ~Tuple_Addr(){}
 };
 
-#endif /* minisql_h */
+#define EQUAL "="
+#define NOT_EQUAL "<>"
+#define LARGER_THAN ">"
+#define LARGER_THAN_AND_EQUAL ">="
+#define LESS_THAN "<"
+#define LESS_THAN_AND_EQUAL "<="
+#define INFI 2147483647
+
+//ÎÄ¼þ´ò¿ªÏà¹ØµÄÒì³£Àà
+class File_openfail{
+public:
+	string filename;
+	File_openfail(const char* fn){
+		filename = fn;
+	}
+	void openfailed(){
+		cerr << "Can't open file " << filename << endl;
+	}
+};
+
+//Óï·¨´íÎóÒì³£Àà
+class Grammer_error{
+public:
+	string errorPos;
+	Grammer_error(string err) : errorPos(err){}
+	void SyntaxError(){
+		cerr << " Error: illegal command." << endl << "SQL syntax error near \"" << errorPos << "\"" << endl;
+	}
+};
+
+class Conflict_Error
+{
+public:
+	string tablename;
+	Conflict_Error(string tblname)
+	{
+		tablename = tblname;
+	}
+};
+
+#endif

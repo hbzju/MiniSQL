@@ -1,83 +1,141 @@
-//
-//  main.cpp
-//  minisql
-//
-//  Created by 王皓波 on 16/5/21.
-//  Copyright © 2016年 王皓波. All rights reserved.
-//
-
-#include <iostream>
-#include "IndexManager.h"
 #include "BPlus_Tree.h"
+#include "minisql.h"
+#include "Interpreter.h"
+#include "IndexManager.h"
+#include "API.h"
+
+#include "fstream"
 using namespace std;
-vector<Tuple<int>> vec;
-extern char blk[8][4096];
 
-void Print_Block(IndexInfo index,int k);
-
-int main(int argc, const char * argv[]) {
-    // insert code here...
-    cout << "Hello, World!\n";
-    Tuple<int> temp;
-    int n;
-    cin>>n;
-    for (int i = 1; i <= n; i++){
-        temp.key=i;
-        temp.position=100-i;
-        //cin>>temp.key>>temp.position;
-        vec.push_back(temp);
-    }
-    IndexInfo index;
-    index.attr_size = sizeof(int);
-    index.indexname = "HB_idx";
-    index.maxKeyNum = (BLOCKSIZE - INDEX_BLOCK_INFO - 4) / (4 + index.attr_size);
-    Create_Index(index);
-    
-    cout<<"Insert: ---------------------------"<<endl;
-    for(int i=0;i<8;i++)Print_Block(index, i);
-    
-    for(int i=0;i<4;i++){
-        int key;
-        cin>>key;
-        Delete_Key_From_Index(index, key);
-        cout<<"Delete:----------------------------"<<endl;
-        for(int j=0;j<8;j++)Print_Block(index, j);
-    }
-    
-    temp.key = 15;
-    temp.position = 8889;
-    try{
-        Insert_Key_To_Index(index, temp);
-    }
-    catch (...){
-        cout << "Some Error" << endl;
-    }
-    //验证错误插入
-    
-    Tuple_Addr TA;
-    TA = Find_Index_Equal_Key(8,index);
-    cout << TA.getIBA() << ' ' << TA.getIO() << ' ' << TA.getTable_Addr() << endl;
-    //system("pause");
-    return 0;
-}
-
-void Print_Block(IndexInfo index,int k)
+/*void Print_Block(IndexInfo index, int k)
 {
-    cout<<"----------------------- "<<k<<" -----------------------"<<endl;
-    int type, keynum;
-    memcpy(&type,blk[k],4);
-    memcpy(&keynum, blk[k]+4, 4);
-    int ofst = INDEX_BLOCK_INFO;
-    cout << type << ' ' << keynum << ' ' << index.maxKeyNum << endl;
-    for (int i = 0; i < keynum; i++){
-        int key,position;
-        memcpy(&key, blk[k]+ofst,4);
-        memcpy(&position, blk[k] + ofst+4, 4);
-        ofst += 8;
-        cout << key <<' ' << position << endl;
-    }
-    //验证插入模块是否正确
-    int next;
-    memcpy(&next,blk[k]+ofst,4);
-    cout << next << endl;
+	
+	
+	
+	
+	
+	<< "----------------------- " << k << " -----------------------" << endl;
+	int type, keynum;
+	memcpy(&type, indexBlock[k], 4);
+	memcpy(&keynum, indexBlock[k] + 4, 4);
+	int ofst = INDEX_BLOCK_INFO;
+	cout << type << ' ' << keynum << ' ' << index.maxKeyNum << endl;
+	for (int i = 0; i < keynum; i++){
+		int position;
+		float key;
+		memcpy(&position, indexBlock[k] + ofst , 4);
+		getElement(&key, indexBlock[k] + ofst + 4, 4);
+		ofst += 8;
+		cout << position << ' ' << key << endl;
+	}
+	//��֤����ģ���Ƿ���ȷ
+	int next;
+	memcpy(&next, indexBlock[k] + ofst, 4);
+	cout << next << endl;
+}*/
+
+/*int main()
+{
+	ifstream infile;
+	infile.open("./student/student.txt", ios::in);
+	if (!infile) {
+		cerr << "Can't open file!" << endl;
+		exit(1);
+	}
+
+	char cmd[1024];
+	char ch;
+	int i;
+
+	while (!infile.eof()){
+		i = 0;
+		memset(cmd, 0, 1024);
+		infile.getline(cmd, 1024);
+		if (infile.eof()) break;
+		string command(cmd);
+		handleWithCommand(command);
+	}
+	return 0;
+}*/
+int main()
+{
+	Block();
+	cout << "-----------------------------------------MINISQL-----------------------------------------\n"
+		"|Copyright(c) 2016, 2016, Wang Haobo, Zhang Jin, Qiu Zhenting and / or its affiliates.  |\n"
+		"|All rights reserved.Other names may be trademarks of their respective owners.          |\n"
+		"|                                                                                       |\n"
+		"|Type ';' to Run your codes.Type 'exit;' quit the execution.                            |\n" 
+		"-----------------------------------------------------------------------------------------"
+		<< endl;
+	
+	while (1){
+		cout << "zwqSQL>";
+		try{
+			string command = getUserCommand();
+			if (command == "exit;") break;
+			handleWithCommand(command);
+		}
+		catch (File_openfail fo){
+			cerr << "Error: 1001 (ER_CANT_OPEN_FILE)" << endl;
+			cerr << "Message: Can't open file: '" << fo.filename << "'!" << endl;
+		}
+		catch (Grammer_error ge){
+			cerr << "Error: 1002 (ER_SYNTAX_ERROR)" << endl;
+			cerr << "Message: You have an error in your SQL syntax.At position :" << ge.errorPos << "." << endl;
+		}
+		catch (Conflict_Error ce){
+			cerr << "Error: 1169 (ER_DUP_UNIQUE)" << endl;
+			cerr << "Message: Can't write, because of unique constraint, to table '" << ce.tablename << "' " << endl;
+		}
+		catch (...){
+			cerr << "Unkonwn Exception." << endl;
+		}
+		cout << endl;
+		/*float id;
+		int age;
+		INT32 position;
+		memcpy(&position, indexBlock[0] + INDEX_BLOCK_INFO, sizeof(INT32));
+		memcpy(&id, indexBlock[0] + INDEX_BLOCK_INFO + 4, sizeof(float));
+		cout <<id<<' '<<position << endl;
+
+		memcpy(&id, tableBlock[0] + 1, sizeof(float));
+		memcpy(&age, tableBlock[0] + 4 + 1, sizeof(int));
+		cout << id << " " << age << endl;*/
+		getchar();
+		Block::flush_all_blocks();
+		//Block::Print();
+	}
+	return 0;
 }
+
+/*
+create table student(
+	id float primary key,
+	age int);
+*/
+
+/*
+insert into student values (10001, 18);
+insert into student values (10002, 18);
+insert into student values (10003, 18);
+insert into student values (10004, 18);
+insert into student values (10005, 18);
+select * from student where id = 10003;
+delete from student where id = 10004;
+select * from student;
+*/
+
+
+/*drop table student;*/
+
+/*insert into student values('10001', 'zj', 18);
+insert into student values('10002', 'hb', 18);
+insert into student values('10003', 'qzt', 19);*/
+
+/*
+create table student(id int primary key,name int unique);
+insert into student values(10001,15);
+insert into student values(10002,16);
+create index hb on student(name);
+select * from student where name > 1000;
+*/
