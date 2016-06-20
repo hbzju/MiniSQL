@@ -25,6 +25,6 @@
 
 </ul>
 
-Condition:{'>' '<' '=' '<>' '>=' '<='}
-Type:{char float int}
-<strong>Do not miss ' ' and sometimes '\n' will make some mistakes.</strong>
+<p>Condition:{'>' '<' '=' '<>' '>=' '<='}</p>
+<p>Type:{char float int}</p>
+<p><strong>Do not miss ' ' and sometimes '\n' will make some mistakes.</strong></p>
