@@ -8,9 +8,9 @@
   [Attribute2] [type],
   ...
   primary key([Attribute?])
-  );<pre><code>
+  );</pre></code>
 </li>
 <li>Select:<br>
-<pre><code>select * from [Table Name] where [Attribute] = [Value];<pre><code>
+<pre><code>select * from [Table Name] where [Attribute] = [Value];</pre></code>
 </li>
 </ul>
