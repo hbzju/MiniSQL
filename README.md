@@ -31,6 +31,10 @@
 <pre><code>Drop [Index Name];</pre></code>
 </li>
 
+<li>Execfile:<br>
+<pre><code>execfile [File Name];</pre></code>
+</li>
+
 </ul>
 
 <p>Condition:{ '>' '<' '=' '<>' '>=' '<=' }</p>
