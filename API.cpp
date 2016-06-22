@@ -40,7 +40,6 @@ void API_Create_Table(string tablename,FieldTree *T)
 
 void API_Drop_Table(Table &tbl)
 {
-	tbl.dropTable();
 	vector<string> idxList;
 	for(int i=0;i<tbl.getAttrNum();i++){
 		string tempstring = tbl.getAttrIndex(tbl.getAttr(i).attr_name);
@@ -50,6 +49,7 @@ void API_Drop_Table(Table &tbl)
 		Index droppedIndex(tempstring);
 		droppedIndex.dropIndex();
 	}
+	tbl.dropTable();
 }
 extern vector<TupleIndex_number> TupleList_IDX;
 void API_Create_Index(IndexStruct I)
@@ -84,6 +84,10 @@ void API_Drop_Index(string indexname)
 
 void API_Select(Table tbl,list<Condition> &clist)
 {
+	if (!tbl.isTableExist()){
+		//±í²»´æÔÚ
+		throw Table_Index_Error("table", tbl.getTableName());
+	}
 	int flag=0;
 	if (clist.empty())flag = 1;
 	list<Condition> Have_Index_Condition;

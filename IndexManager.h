@@ -20,36 +20,15 @@ void Find_Key_Offset_Index(IndexInfo index, T key, vector<int> &offsetlist, stri
 class NoKeyFound_Error{};
 class Cond_Error{};
 
-/*template<class T>
-Tuple_Addr Find_Index_Equal_Key(T key, IndexInfo index)
-{
-    node root(index, 0, NULL);
-    Tuple_Addr TA;
-    try{
-        TA = root.Find_Key(key);
-        if (TA.Get_Key_Exist() == false){
-            NoKeyFound_Error nkfe;
-            throw nkfe;
-        }
-    }
-    catch(...){
-        
-		
-		<<"Find Key Error!"<<endl;
-    }
-    return TA;
-}*/
-
-
 template<class T>
-void Delete_Key_From_Index(IndexInfo index,T key)
+void Delete_Key_From_Index(IndexInfo index, T key)
 {
     node root(index, 0, 0);
     try{
         root.Delete_Key(key);
     }
-    catch(...){
-        cout<<"Delete Error!"<<endl;
+    catch (...){
+        cout << "Delete Error!" << endl;
     }
 }
 
@@ -60,9 +39,9 @@ void Find_Key_Offset_Index(IndexInfo index,T key,vector<int> &offsetlist,string 
     vector<Tuple_Addr> vec;
     try{
         if(cond==EQUAL){
-			cout << key << endl;
+			//cout << key << endl;
             Tuple_Addr TA=root.Find_Key(key);
-			offsetlist.push_back(TA.getTable_Addr());
+			if(TA.Get_Key_Exist())offsetlist.push_back(TA.getTable_Addr());
         }
         else if(cond == LARGER_THAN_AND_EQUAL){
             root.Find_Larger_Than_Key(key,1,vec);

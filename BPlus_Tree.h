@@ -13,7 +13,7 @@ class NoKeyDeleted_Error{};
 const int const_number[] = { 0, 1, 2, 3, 4 };
 const int LEFT_FLAG = 1, RIGHT_FLAG = 2;
 extern INT32 Left_First_Node;
-extern int FirstEmptyBlockAddr;
+extern INT32 FirstEmptyBlockAddr;
 
 class node
 {
@@ -80,6 +80,12 @@ public:
     void Recover_Internal_From_Half_Full(T key);
     template<class T>
     void Update_First_Key_For_Delete(T key);
+	void Update_Extra()
+	{
+		INT32 extraInfo = Left_First_Node + (FirstEmptyBlockAddr << 16);
+		//cout << extraInfo << ' ' << Left_First_Node << ' ' << FirstEmptyBlockAddr << endl;
+		memcpy(block->buffer + 8, &extraInfo, 4);
+	}
     ~node(){
         //UnPin(block);
     }
@@ -239,7 +245,7 @@ void node::Split_Node(T key, int blk_ofst, INT32 position)
 		memset(block->buffer + 4,0,BLOCKSIZE);
 		memcpy(block->buffer, &const_number[3], 4);
         memcpy(block->buffer + 4, &const_number[1], 4);
-		memcpy(block->buffer + 8, &(left->offset), 4);
+		Left_First_Node = left->offset;
         memcpy(block->buffer + INDEX_BLOCK_INFO, &(left->offset), 4);
         setElement(block->buffer + INDEX_BLOCK_INFO + 4, &right_first_key, index.attr_size);
         memcpy(block->buffer + INDEX_BLOCK_INFO + 4 + index.attr_size, &(right->offset), 4);
@@ -346,7 +352,6 @@ void node::Split_Internal_Node(T key, int blk_ofst, INT32 position)
         rt.getMinmumdDesc(right_first_key);
 		memset(block->buffer, 0, BLOCKSIZE);
         memcpy(block->buffer + 4, &const_number[1], 4);
-		memcpy(block->buffer + 8, &(left->offset), 4);
         memcpy(block->buffer + INDEX_BLOCK_INFO, &(left->offset), 4);
         setElement(block->buffer + INDEX_BLOCK_INFO + 4, &right_first_key, index.attr_size);
         memcpy(block->buffer + INDEX_BLOCK_INFO + 4 + index.attr_size, &(right->offset), 4);
@@ -357,6 +362,7 @@ void node::Split_Internal_Node(T key, int blk_ofst, INT32 position)
 		right = Block::getBlock(index.indexname, FirstEmptyBlockAddr, 1);
 		FirstEmptyBlockAddr++;
         //int last_ptr_position = INDEX_BLOCK_INFO + left_size;
+		
         memcpy(block->buffer + 8, &RIGHT_FLAG, 4);
         memcpy(right->buffer, &const_number[2], 4);
         memcpy(right->buffer + 8, &LEFT_FLAG, 4);
@@ -649,8 +655,6 @@ void node::Delete_Key_From_Node(int blk_ofst,T key)
     INT32 src = blk_ofst + index.attr_size;
     INT32 dest = blk_ofst - 4;
     INT32 length = INDEX_BLOCK_INFO + keynum*(index.attr_size + 4) + 4 - src;//12+4+7+4+7+4 -12+4+7
-    T Element;
-    getElement(&Element, block->buffer+INDEX_BLOCK_INFO+4, index.attr_size);
     if(!IsLeaf())memcpy(block->buffer+dest+4,block->buffer+src+4,length-4);
     else memcpy(block->buffer+dest,block->buffer+src,length);
     keynum--;
@@ -737,42 +741,43 @@ void node::Recover_From_Half_Full(T key)
 template<class T>
 void node::Merge_Siblings(node *sibling)
 {
-    Block *sib=sibling->getBlock_Ptr();
-    T Element;
-    getElement(&Element,sib->buffer+INDEX_BLOCK_INFO+4,index.attr_size);
-    INT32 copy_length=sibling->getKeynum()*(4+index.attr_size)+4;
-    INT32 dest=INDEX_BLOCK_INFO+keynum*(4+index.attr_size);
-    INT32 src=INDEX_BLOCK_INFO;
-    memcpy(block->buffer+dest,sib->buffer+src,copy_length);
-    keynum=keynum+sibling->getKeynum();
-    memcpy(block->buffer+4,&keynum,4);
-    INT32 ofst_in_parent=parent->Find_Position(Element);
-    if((!parent->IsRoot())&&parent->IsHalfFull())
-    {
-        parent->Delete_Key_From_Node(ofst_in_parent,Element);
-        parent->Recover_Internal_From_Half_Full(Element);
-    }
-    else if(parent->IsRoot()&&parent->getKeynum()<=1)
-    {
-        int length=(keynum+sibling->getKeynum())*(4+index.attr_size)+4+INDEX_BLOCK_INFO;
-        memcpy(parent->getBlock_Ptr()->buffer,block->buffer,length);
-        int root_type=IsLeaf()?0:3;
-        memcpy(parent->getBlock_Ptr()->buffer,&root_type, 4);
-        //让合并后的结点成为新的root即可
-        /*------------------------------------------------------buffer do-------------------------------------------------*/
-        Release(block);
-        //此时this的数据全都是无效的，可以被释放了
-        /*------------------------------------------------------buffer do-------------------------------------------------*/        
-    }
-    else
-    {
-        parent->Delete_Key_From_Node(ofst_in_parent,Element);
-    }
+	Block *sib = sibling->getBlock_Ptr();
+	T Element;
+	getElement(&Element, sib->buffer + INDEX_BLOCK_INFO + 4, index.attr_size);
+	INT32 copy_length = sibling->getKeynum()*(4 + index.attr_size) + 4;
+	INT32 dest = INDEX_BLOCK_INFO + keynum*(4 + index.attr_size);
+	INT32 src = INDEX_BLOCK_INFO;
+	memcpy(block->buffer + dest, sib->buffer + src, copy_length);
+	keynum = keynum + sibling->getKeynum();
+	memcpy(block->buffer + 4, &keynum, 4);
+	INT32 ofst_in_parent = parent->Find_Position(Element);
+	if ((!parent->IsRoot()) && parent->IsHalfFull())
+	{
+		parent->Delete_Key_From_Node(ofst_in_parent, Element);
+		parent->Recover_Internal_From_Half_Full(Element);
+	}
+	else if (parent->IsRoot() && parent->getKeynum() <= 1)
+	{
+		int length = (keynum + sibling->getKeynum())*(4 + index.attr_size) + 4 + INDEX_BLOCK_INFO;
+		memcpy(parent->getBlock_Ptr()->buffer, block->buffer, length);
+		int root_type = IsLeaf() ? 0 : 3;
+		memcpy(parent->getBlock_Ptr()->buffer, &root_type, 4);
+		Left_First_Node = 0;
+		//让合并后的结点成为新的root即可
+		/*------------------------------------------------------buffer do-------------------------------------------------*/
+		memset(block->buffer, 0, BLOCKSIZE);
+		//此时this的数据全都是无效的，可以被释放了
+		/*------------------------------------------------------buffer do-------------------------------------------------*/
+	}
+	else
+	{
+		parent->Delete_Key_From_Node(ofst_in_parent, Element);
+	}
 
-    /*------------------------------------------------------buffer do-------------------------------------------------*/
-    Release(sib);
-    //此时sib的数据全都是无效的，可以被释放了
-    /*------------------------------------------------------buffer do-------------------------------------------------*/
+	/*------------------------------------------------------buffer do-------------------------------------------------*/
+	memset(sib->buffer, 0, BLOCKSIZE);
+	//此时sib的数据全都是无效的，可以被释放了
+	/*------------------------------------------------------buffer do-------------------------------------------------*/
 }
 
 template<class T>
@@ -843,53 +848,53 @@ void node::Recover_Internal_From_Half_Full(T key)
 template<class T>
 void node::Merge_Internal_Siblings(node *sibling)
 {
-    Block *sib=sibling->getBlock_Ptr();
-    int keynum_sib=sibling->getKeynum();
-    T Element;
-    sibling->getMinmumdDesc(Element);
-    int last_pos=keynum*(4+index.attr_size)+4+INDEX_BLOCK_INFO;
-    setElement(block->buffer+last_pos,&Element,index.attr_size);
-    INT32 dest=last_pos+index.attr_size;
-    INT32 src=INDEX_BLOCK_INFO;
-    INT32 copy_length=keynum_sib*(4+index.attr_size)+4;
-    memcpy(block->buffer+dest,sib->buffer+src,copy_length);
-    keynum=keynum+keynum_sib+1;
-    memcpy(block->buffer+4,&keynum,4);
+	Block *sib = sibling->getBlock_Ptr();
+	int keynum_sib = sibling->getKeynum();
+	T Element;
+	sibling->getMinmumdDesc(Element);
+	int last_pos = keynum*(4 + index.attr_size) + 4 + INDEX_BLOCK_INFO;
+	setElement(block->buffer + last_pos, &Element, index.attr_size);
+	INT32 dest = last_pos + index.attr_size;
+	INT32 src = INDEX_BLOCK_INFO;
+	INT32 copy_length = keynum_sib*(4 + index.attr_size) + 4;
+	memcpy(block->buffer + dest, sib->buffer + src, copy_length);
+	keynum = keynum + keynum_sib + 1;
+	memcpy(block->buffer + 4, &keynum, 4);
 
-    INT32 ofst_in_parent=parent->Find_Position(Element);
-    T temp;
-    getElement(&temp,parent->getBlock_Ptr()->buffer+ofst_in_parent,index.attr_size);
-    int lp=INDEX_BLOCK_INFO+parent->getKeynum()*(index.attr_size+4)+4;
-    if(temp==Element||ofst_in_parent==lp)ofst_in_parent-=4+index.attr_size;
-    if((!parent->IsRoot())&&parent->IsHalfFull())
-    {
-        parent->Delete_Key_From_Node(ofst_in_parent,Element);
-        T First_Key;
-        getElement(&First_Key, parent->getBlock_Ptr()->buffer+INDEX_BLOCK_INFO+4, index.attr_size);
-        if(Element<First_Key)Element=First_Key;
-        parent->Recover_Internal_From_Half_Full(Element);
-    }
-    else if(parent->IsRoot()&&parent->getKeynum()<=1)
-    {
-        int length=(keynum+keynum_sib)*(4+index.attr_size)+4+INDEX_BLOCK_INFO;
-        memcpy(parent->getBlock_Ptr()->buffer,block->buffer,length);
-        int root_type=3;
-        memcpy(parent->getBlock_Ptr()->buffer,&root_type, 4);
-        //让合并后的结点成为新的root即可
-        /*------------------------------------------------------buffer do-------------------------------------------------*/
-        Release(block);
-        //此时this的数据全都是无效的，可以被释放了
-        /*------------------------------------------------------buffer do-------------------------------------------------*/        
-    }
-    else
-    {
-        parent->Delete_Key_From_Node(ofst_in_parent,Element);
-    }
+	INT32 ofst_in_parent = parent->Find_Position(Element);
+	T temp;
+	getElement(&temp, parent->getBlock_Ptr()->buffer + ofst_in_parent, index.attr_size);
+	int lp = INDEX_BLOCK_INFO + parent->getKeynum()*(index.attr_size + 4) + 4;
+	if (temp == Element || ofst_in_parent == lp)ofst_in_parent -= 4 + index.attr_size;
+	if ((!parent->IsRoot()) && parent->IsHalfFull())
+	{
+		parent->Delete_Key_From_Node(ofst_in_parent, Element);
+		T First_Key;
+		getElement(&First_Key, parent->getBlock_Ptr()->buffer + INDEX_BLOCK_INFO + 4, index.attr_size);
+		if (Element<First_Key)Element = First_Key;
+		parent->Recover_Internal_From_Half_Full(Element);
+	}
+	else if (parent->IsRoot() && parent->getKeynum() <= 1)
+	{
+		int length = (keynum + keynum_sib)*(4 + index.attr_size) + 4 + INDEX_BLOCK_INFO;
+		memcpy(parent->getBlock_Ptr()->buffer, block->buffer, length);
+		int root_type = 3;
+		memcpy(parent->getBlock_Ptr()->buffer, &root_type, 4);
+		//让合并后的结点成为新的root即可
+		/*------------------------------------------------------buffer do-------------------------------------------------*/
+		memset(block->buffer, 0, BLOCKSIZE);
+		//此时this的数据全都是无效的，可以被释放了
+		/*------------------------------------------------------buffer do-------------------------------------------------*/
+	}
+	else
+	{
+		parent->Delete_Key_From_Node(ofst_in_parent, Element);
+	}
 
-    /*------------------------------------------------------buffer do-------------------------------------------------*/
-    Release(sib);
-    //此时sib的数据全都是无效的，可以被释放了
-    /*------------------------------------------------------buffer do-------------------------------------------------*/    
+	/*------------------------------------------------------buffer do-------------------------------------------------*/
+	memset(sib->buffer, 0, BLOCKSIZE);
+	//此时sib的数据全都是无效的，可以被释放了
+	/*------------------------------------------------------buffer do-------------------------------------------------*/
 }
 
 template<class T>

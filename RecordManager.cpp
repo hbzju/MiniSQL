@@ -1,5 +1,5 @@
 #include "Interpreter.h"
-#include "minisql.h"
+#include "IndexManager.h"
 #include <fstream>
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +105,7 @@ int RBlock::getBlock(string filename, int offsetB, int is_want_empty)
 		infile.close();
 		return offsetNow;
 	}
+    return 0;
 }
 
 
@@ -313,6 +314,7 @@ bool Tuple::IsUniqueKeyExisted()
 //查找
 void Tuple::Select(vector<int> offsetlist, list<Condition> conditionlist)
 {
+
 	int offsetNow = 0; //当前偏移块
 	int maxoffset = 0;     //最大偏移块
 	int is_index_exist = 1;      //标记索引返回结果是否为空
@@ -696,6 +698,17 @@ int Tuple::Delete(vector<int> offsetlist, list<Condition> conditionlist)
 
 	T.getTableInfo(); //获得表的信息
 
+	//找到表中所有索引 用于b+树的删除
+	list<IndexInfo> indexlist;
+	IndexInfo idxinfo;
+	for (int num = 0; num < T.attr_num; num++){
+		idxinfo.indexname = T.getAttrIndex(T.getAttr(num).attr_name);
+		idxinfo.attr_size = T.getAttr(num).attr_len;
+		idxinfo.maxKeyNum = (4096 - 4 - INDEX_BLOCK_INFO) / (4 + idxinfo.attr_size);
+
+		indexlist.push_back(idxinfo);
+	}
+
 	int sign = *(offsetlist.end() - 1);
 	offsetlist.pop_back(); //删除尾元素
 	if (sign == 0 || sign == 1) {
@@ -908,11 +921,38 @@ int Tuple::Delete(vector<int> offsetlist, list<Condition> conditionlist)
 					*bufblock->ptr = '0';  //第一位标记删除标志
 					deleteNum++;
 					bufblock->is_Changed = 1; //缓冲块被改变，需要回写
+					//将此条记录从B+树中删除
+					int j;
+					ptroffset = 1;
+					list<IndexInfo>::iterator li;
+					for (j = 0, li = indexlist.begin(); j < T.attr_num, li != indexlist.end(); j++, li++){
+						if (li->indexname != ""){
+							//有索引
+							if (T.attrs[j].attr_type == CHAR){
+								//属性为char类型
+								tmpAttr = new char[T.attrs[j].attr_len + 1];
+								memset(tmpAttr, 0, T.attrs[j].attr_len + 1);
+								memcpy(tmpAttr, bufblock->ptr + ptroffset, T.attrs[j].attr_len);
+								string tmp = tmpAttr;
+								Delete_Key_From_Index(*li, tmp);
+								delete[] tmpAttr;
+							}
+							else if (T.attrs[j].attr_type == INT){
+								memcpy(&tmpivalue, bufblock->ptr + ptroffset, 4);  //将该条属性的值存在tmpivalue中
+								Delete_Key_From_Index(*li, tmpivalue);
+							}
+							else if (T.attrs[j].attr_type == FLOAT){
+								memcpy(&tmpfvalue, bufblock->ptr + ptroffset, 4);  //将该条属性的值存在tmpivalue中
+								Delete_Key_From_Index(*li, tmpfvalue);
+							}
+						}
+						ptroffset += T.attrs[j].attr_len;
+					}
 				}
 			}//该条记录存在
 			if (bufblock->is_Changed){
 				//若需要回写
-				bufblock->writeBackBlock(filename.c_str(), offsetNow);  //将这块buffer写回文件
+				bufblock->writeBackBlock(filename.c_str(), blockAddr);  //将这块buffer写回文件
 			}
 		}
 	}

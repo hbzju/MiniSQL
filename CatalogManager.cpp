@@ -261,6 +261,11 @@ void Table::getTableInfo()
 	string filename;
 	filename = table_name + "_tableinfo.txt";
 
+	if (!isTableExist()){
+		//表不存在
+		throw Table_Index_Error("table", table_name);
+	}
+
 	infile.open(filename.c_str(), ios::in);
 	if (!infile) throw File_openfail(filename.c_str());
 	
@@ -284,6 +289,7 @@ string Table::getPrimaryKey()
 		if (attrs[i].attr_def_type == 0) 
 			return attrs[i].attr_name;
 	}
+    return "";
 }
 
 int Table::getPrimaryKeySize()
@@ -292,6 +298,7 @@ int Table::getPrimaryKeySize()
 		if (attrs[i].attr_def_type == 0)
 			return attrs[i].attr_len;
 	}
+    return 0;
 }
 
 
@@ -336,27 +343,23 @@ bool Index::createIndex()
 {
 	if (isIndexExist()){
 		//索引名已存在
-		cerr << "The index has already exist!" << endl;
-		return false;
+		throw Table_Index_Error("index", index_name);
 	}
 
 	Table T(table_name);
 	if (!T.isTableExist()){
 		//表不存在
-		cerr << "The table doesn't exist!" << endl;
-		return false;
+		throw Table_Index_Error("table", table_name);
 	}
 
 	T.getTableInfo();
 	if (!T.isAttriExist(attr_name)){
 		//属性不存在
-		cerr << "The attribute doesn't exist in this table!" << endl;
-		return false;
+		throw Table_Index_Error("attribute", attr_name);
 	}
 	if (!T.isAttriUnique(attr_name)){
 		//属性不是unique属性
-		cerr << "The attribute maybe multi-valued. Can't create index on it!" << endl;
-		return false;
+		throw Multip_Error(attr_name);
 	}
 	
 	//满足创建索引的条件
@@ -404,7 +407,7 @@ bool Index::dropIndex()
 	}
 	//索引存在，则删除或更新相关文件
 
-	//删除tablelist.txt中表名
+	//删除indexlist.txt中索引名
 	ifstream infile;
 	infile.open("indexlist.txt", ios::in); //以只读模式打开文件，读取其中信息
 	if (!infile) throw File_openfail("indexlist.txt");
@@ -414,11 +417,11 @@ bool Index::dropIndex()
 	while (!infile.eof()){
 		getline(infile, indexname);  //每行只储存一个索引信息
 		if (indexname != "" && indexname != index_name){
-			//过滤掉要删除的表名，保留其余的表名信息，存在newIndexList中
+			//过滤掉要删除的索引，保留其余的索引信息，存在newIndexList中
 			newIndexList = newIndexList + indexname + '\n';
 		}
 	}
-
+	infile.close();
 	ofstream outfile;
 	outfile.open("indexlist.txt", ios::out);  //打开indexlist.txt并清空
 	if (!outfile) throw File_openfail("indexlist.txt");
@@ -426,9 +429,39 @@ bool Index::dropIndex()
 	outfile.close();
 
 	string filename;
+
+	string tbname;
+	string idname;
 	//删除记录索引信息的文件
 	filename = index_name + "_indexinfo.txt";
+	infile.open(filename.c_str(), ios::in);
+	//读取索引所在的表名和字段信息
+	{
+		infile >> indexname >>tbname >>idname;
+	}
+	string thisIndexinfo = indexname + " " + idname;
+	infile.close();
 	remove(filename.c_str());  //移除文件
+
+	//删除_tableindexinfo.txt中索引信息
+	filename = tbname + "_tableindexinfo.txt";
+	infile.open(filename.c_str(), ios::in); //以只读模式打开文件，读取其中信息
+	if (!infile) throw File_openfail(filename.c_str());
+
+	string newIndexinfo = "";
+	string indexinfo;
+	while (!infile.eof()){
+		getline(infile, indexinfo);  //每行只储存一个索引信息
+		if (indexinfo != "" && indexinfo != thisIndexinfo){
+			//过滤掉要删除的索引信息，保留其余的索引信息，存在newIndexList中
+			newIndexinfo = newIndexinfo + indexinfo + '\n';
+		}
+	}
+	infile.close();
+	outfile.open(filename.c_str(), ios::out);  //打开_tableindexlist.txt并清空
+	if (!outfile) throw File_openfail(filename.c_str());
+	outfile << newIndexinfo;  //将保留的该表的索引信息存入文件中
+	outfile.close();
 
 	//删除储存该索引B+树的文件
 	filename = index_name;

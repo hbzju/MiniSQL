@@ -3,6 +3,7 @@
 #include "Interpreter.h"
 #include "IndexManager.h"
 #include "API.h"
+#include "ctime"
 
 #include "fstream"
 using namespace std;
@@ -69,11 +70,15 @@ int main()
 		<< endl;
 	
 	while (1){
+		clock_t start, end;
 		cout << "zwqSQL>";
 		try{
 			string command = getUserCommand();
+			start = clock();
 			if (command == "exit;") break;
 			handleWithCommand(command);
+			end = clock();
+			cout << "(" << double(end - start)/CLOCKS_PER_SEC << " sec)" << endl;
 		}
 		catch (File_openfail fo){
 			cerr << "Error: 1001 (ER_CANT_OPEN_FILE)" << endl;
@@ -86,6 +91,14 @@ int main()
 		catch (Conflict_Error ce){
 			cerr << "Error: 1169 (ER_DUP_UNIQUE)" << endl;
 			cerr << "Message: Can't write, because of unique constraint, to table '" << ce.tablename << "' " << endl;
+		}
+		catch (Table_Index_Error te){
+			cerr << "Error: 1760 (ER_DUP_UNIQUE)" << endl;
+			cerr << "Error: " << te.errorType << " " << te.name << " does not existed!" << endl;
+		}
+		catch (Multip_Error me){
+			cerr << "Error: 1760 (ER_DUP_UNIQUE)" << endl;
+			cerr << "The attribute maybe multi-valued. Can't create index on it!" << endl;
 		}
 		catch (...){
 			cerr << "Unkonwn Exception." << endl;
@@ -111,15 +124,12 @@ int main()
 /*
 create table student(
 	id float primary key,
-	age int);
-*/
-
-/*
+	age int unique);
 insert into student values (10001, 18);
-insert into student values (10002, 18);
-insert into student values (10003, 18);
-insert into student values (10004, 18);
-insert into student values (10005, 18);
+insert into student values (10002, 19);
+insert into student values (10003, 20);
+insert into student values (10004, 21);
+insert into student values (10005, 22);
 select * from student where id = 10003;
 delete from student where id = 10004;
 select * from student;

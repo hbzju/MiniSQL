@@ -56,6 +56,7 @@ void Create_Index(IndexInfo index)
 			//string key = temp;
 			root.Insert_Key(TupleList_IDX[i].key, TupleList_IDX[i].position);
 		}
+		root.Update_Extra();
 	}
 	int listSize = TupleList_IDX.size();
 	for (int i = 0; i < listSize; i++){
@@ -67,7 +68,7 @@ void Create_Index(IndexInfo index)
 void Insert_Key_To_Index(IndexInfo index, TupleIndex tuple)
 {
 	node root(index, 0, 0);
-	try{
+	//try{
 		if (tuple.type == INT){
 			int key;
 			key=atoi(tuple.key.c_str());
@@ -84,9 +85,11 @@ void Insert_Key_To_Index(IndexInfo index, TupleIndex tuple)
 			string key = temp;
 			root.Insert_Key(key, tuple.position);
 		}
-	}
-	catch (...){
+		root.Update_Extra();
+		//更新extra信息，保证第一个空块和最左侧节点的值被记录
+	//}
+	/*catch (...){
 		cout << "Insert Error!" << endl;
-	}
+	}*/
 }
 

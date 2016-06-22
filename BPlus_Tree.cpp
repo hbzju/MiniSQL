@@ -1,7 +1,7 @@
 #include "BPlus_Tree.h"
 
 INT32 Left_First_Node;
-int FirstEmptyBlockAddr=1;
+INT32 FirstEmptyBlockAddr=1;
 
 node::node()
 {
@@ -28,6 +28,10 @@ node::node(IndexInfo idx, INT32 offset, node* parent)
 		this->parent = NULL;
 		extra = -1;
 		memcpy(&Left_First_Node, block->buffer + 8, 4);
+		FirstEmptyBlockAddr = (Left_First_Node >> 16) & 0x0000FFFF;
+		Left_First_Node = Left_First_Node & 0x0000FFFF;
+		if (FirstEmptyBlockAddr == 0)FirstEmptyBlockAddr = 1;
+		//cout << FirstEmptyBlockAddr << ' ' << Left_First_Node << endl;
 	}
 	else{
 		this->parent = parent;
@@ -79,7 +83,7 @@ INT32 node::Find_Real_Brother(INT32 blk_ofst, bool &flag)
 		position = blk_ofst + index.attr_size;
 	}
 	else{
-		cout << "00A0D0AWIR214" << endl;
+		//cout << "00A0D0AWIR214" << endl;
 		position = blk_ofst - 8 - index.attr_size;
 	}
 	INT32 sibling;

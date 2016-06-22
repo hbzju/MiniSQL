@@ -105,12 +105,13 @@ public:
 	int getPrimaryKeySize();         //返回表的primary key的大小
 	int getAttrNum() { return attr_num; }         //返回表的属性数
 	Attribute getAttr(int i){ return attrs[i]; }  //根据属性下标返回属性名
-	Attribute getAttr(string AttrName){
+	Attribute getAttr(string AttrName){      
 		for (int i = 0; i < attr_num; i++){
 			if (attrs[i].attr_name == AttrName){
 				return attrs[i];
 			}
 		}
+        return attrs[0];
 	}
 	string getAttrIndex(string attrname);         //判断attrname是否有索引，如果有则返回索引名
 	~Table(){}

@@ -81,8 +81,16 @@ public:
 	File_openfail(const char* fn){
 		filename = fn;
 	}
-	void openfailed(){
-		cerr << "Can't open file " << filename << endl;
+};
+
+//表/索引冲突异常类
+class Table_Index_Error{
+public:
+	string errorType;
+	string name;
+	Table_Index_Error(const char* errorType, string name){
+		this->errorType = errorType;
+		this->name = name;
 	}
 };
 
@@ -91,9 +99,6 @@ class Grammer_error{
 public:
 	string errorPos;
 	Grammer_error(string err) : errorPos(err){}
-	void SyntaxError(){
-		cerr << " Error: illegal command." << endl << "SQL syntax error near \"" << errorPos << "\"" << endl;
-	}
 };
 
 class Conflict_Error
@@ -103,6 +108,15 @@ public:
 	Conflict_Error(string tblname)
 	{
 		tablename = tblname;
+	}
+};
+
+class Multip_Error
+{
+public:
+	string name;
+	Multip_Error(string name){
+		this->name = name;
 	}
 };
 
