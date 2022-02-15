@@ -1,5 +1,5 @@
-# minisql
-<p>Developer: Zhang Jin / Wang Haobo</p>
+# MiniSQL
+<p>Developer: Jin Zhang / Haobo Wang</p>
 <p>SQL Example</p>
 <ul>
 <li>Create Table:<br>
